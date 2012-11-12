@@ -1,28 +1,60 @@
 class WordTrie(object):
+    __slots__ = ('values', 'children')
+
     def __init__(self):
         self.values = []
         self.children = {}
 
-    def __init__(self, dictionary):
+    @classmethod
+    def from_file(self, dictionary):
+        trie = WordTrie()
+
+        count = 0
+
         with open(dictionary, 'r') as fp:
             for word in fp:
                 word = word.strip().lower()
 
                 if len(word) > 1:
-                    self.add(word)
+                    if trie.add(word):
+                        count += 1
+
+        print count
+        return trie
 
     def add(self, word):
-        self._add(word, 0)
+        a_ord = ord('a')
+        z_ord = ord('z') - ord('a')
 
-    def _add(self, word, index):
-        if index == len(word):
-            self.values.append(word)
-        else:
-            letter = word[index]
+        index = 0
 
-            if letter not in self.children:
-                self.children[letter] = WordTrie()
+        curr_trie = self
 
-            self.children[letter]._add(word, index + 1)
+        while index < len(word):
+            letter = ord(word[index]) - a_ord
 
-    def get(self, letters):
+            if letter < 0 or letter > z_ord:
+                return False
+
+            if letter not in curr_trie.children:
+                curr_trie.children[letter] = WordTrie()
+
+            curr_trie = curr_trie.children[letter]
+            index += 1
+
+        curr_trie.values.append(word)
+        return True
+
+    def lookup(self, letters):
+        curr_trie = self
+
+        a_ord = ord('a')
+
+        for letter in letters:
+            letter = ord(letter) - a_ord
+
+            if letter in curr_trie.children:
+                curr_trie = curr_trie.children[letter]
+            else:
+                return None
+        return curr_trie.values

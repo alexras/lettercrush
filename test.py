@@ -1,26 +1,18 @@
 #!/usr/bin/env python
 
 from board import *
+from wordtrie import WordTrie
+import pprint
 
 board = Board("mpswnrzlpcemyopbzlkrnhemv")
-position = Position()
 
+possible_words, prefix_map = board.possible_words("/usr/share/dict/words")
 
+pprint.pprint(map(lambda x: x.word, possible_words))
 
-position.update(
-    Player.RED,
-    [0, 1, 2, 7, 11, 15, 17, 19, 22])
+d = {}
 
-position.update(
-    Player.BLUE,
-    [5, 8, 10, 12, 13, 18])
+for key, value in prefix_map.items():
+    d[possible_words[key].word] = map(lambda x: possible_words[x].word, value)
 
-print_board(board, position)
-
-second_position = Position()
-
-second_position.update(
-    Player.RED,
-    [10, 11, 12, 6, 16])
-
-print_board(board, second_position)
+pprint.pprint(d)
