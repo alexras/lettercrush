@@ -1,0 +1,3 @@
+* Words must have at least two letters.
+* Words may only be played once.
+* Words may not be a prefix of a previously played word.
