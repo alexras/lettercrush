@@ -6,8 +6,15 @@ class Player(object):
     BLUE = True
 
     @classmethod
-    def opponent(player):
+    def opponent(self, player):
         return not player
+
+    @classmethod
+    def negamax_color(self, player):
+        if player == Player.RED:
+            return -1
+        else:
+            return 1
 
 class WordInfo(object):
     __slots__ = ('letters', 'word')
@@ -99,6 +106,8 @@ class Position(object):
         other.red_score = self.red_score
         other.blue_score = self.blue_score
 
+        return other
+
     def update(self, player, letter_indices):
         for index in letter_indices:
             self.owner[index] = player
@@ -185,19 +194,80 @@ def print_board(board, position):
 
     print board_str
 
-def search(board, trie, dictionary):
+# Depth-limited negamax pruning
+def search_sub(possible_words, available_words, prefix_map, player, position,
+               alpha, beta, depth, known_scores):
+
+    if depth == 0 or position.endgame() or len(available_words) == 0:
+        if player == Player.BLUE:
+            return (Player.negamax_color(player) * position.blue_score, [])
+        else:
+            return (Player.negamax_color(player) * position.red_score, [])
+
+    best_word_list = None
+
+    for word_index in available_words:
+        # Calculate the next position given the word, and the remaining set of
+        # words available subject to the rules
+
+        next_position = position.copy()
+        next_position.update(player, possible_words[word_index].letters)
+
+        remaining_words = set(available_words)
+
+        word_stack = [word_index]
+
+        while len(word_stack) > 0:
+            next_word = word_stack.pop()
+
+            remaining_words.discard(next_word)
+
+            if next_word in prefix_map:
+                for prefix in prefix_map[next_word]:
+                    word_stack.append(prefix)
+
+
+        (score, word_list) = search_sub(
+            possible_words, remaining_words, prefix_map,
+            Player.opponent(player), next_position, -1 * beta, -1 * alpha,
+            depth - 1)
+
+        score = -1 * score
+
+        word_list.append(word_index)
+
+        if score >= beta:
+            return (score, word_list)
+
+        if score >= alpha:
+            alpha = score
+            best_word_list = word_list
+
+    return (alpha, best_word_list)
+
+
+def search(board, possible_words, prefix_map, depth):
     position = Position()
 
-    possible_words, prefix_map = board.possible_words(dictionary)
-
-    known_position_scores = set()
     available_words = set(range(len(possible_words)))
 
     player = Player.BLUE
-    current_position = Position()
+    initial_position = Position()
 
-    for word_index in available_words:
-        next_position = current_position.copy()
-        next_position.update(player, possible_words[word_index].letters)
+    known_scores = {
+        Player.RED : {},
+        Player.BLUE : {}
+        }
 
-        used_words = set(word_index)
+    # Board.DIMENSION ^2 + 1 is effectively infinity, since it's larger than
+    # any possible score
+    infinity = (Board.DIMENSION * Board.DIMENSION) + 1
+
+    score, word_list = search_sub(
+        possible_words, available_words, prefix_map, player, initial_position,
+        -1 * infinity, infinity, depth, known_scores)
+
+    word_list.reverse()
+
+    return (possible_words[word_list[0]].word,
+            map(lambda x: possible_words[x].word, word_list))
