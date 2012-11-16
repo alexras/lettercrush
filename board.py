@@ -1,5 +1,5 @@
 from blessings import Terminal
-import collections, itertools
+import collections, itertools, time, math, sys
 
 class Player(object):
     RED = False
@@ -22,6 +22,32 @@ class WordInfo(object):
     def __init__(self, letters, word):
         self.letters = letters
         self.word = word
+
+class StateMeter(object):
+    def __init__(self, interval=5):
+        self.states = 0
+        self.total_states = 0
+        self.pruned = 0
+        self.start_time = math.floor(time.time())
+        self.interval = interval
+
+    def incr_state(self):
+        self.states += 1
+        self.total_states += 1
+
+        if self.states % 100 == 0:
+            current_time = math.floor(time.time())
+
+            if current_time > self.start_time + self.interval:
+                elapsed_time = current_time - self.start_time
+                print "% 9.2f states per second % 9d pruned % 12d total" % (
+                    self.states / self.interval, self.pruned, self.total_states)
+                self.states = 0
+                self.pruned = 0
+                self.start_time = current_time
+
+    def incr_prune(self):
+        self.pruned += 1
 
 class Board(object):
     DIMENSION = 5
@@ -196,7 +222,7 @@ def print_board(board, position):
 
 # Depth-limited negamax pruning
 def search_sub(possible_words, available_words, prefix_map, player, position,
-               alpha, beta, depth, known_scores):
+               alpha, beta, depth, meter):
 
     if depth == 0 or position.endgame() or len(available_words) == 0:
         if player == Player.BLUE:
@@ -226,17 +252,19 @@ def search_sub(possible_words, available_words, prefix_map, player, position,
                 for prefix in prefix_map[next_word]:
                     word_stack.append(prefix)
 
+        meter.incr_state()
 
         (score, word_list) = search_sub(
             possible_words, remaining_words, prefix_map,
             Player.opponent(player), next_position, -1 * beta, -1 * alpha,
-            depth - 1)
+            depth - 1, meter)
 
         score = -1 * score
 
         word_list.append(word_index)
 
         if score >= beta:
+            meter.incr_prune()
             return (score, word_list)
 
         if score >= alpha:
@@ -263,9 +291,11 @@ def search(board, possible_words, prefix_map, depth):
     # any possible score
     infinity = (Board.DIMENSION * Board.DIMENSION) + 1
 
+    meter = StateMeter(interval=1)
+
     score, word_list = search_sub(
         possible_words, available_words, prefix_map, player, initial_position,
-        -1 * infinity, infinity, depth, known_scores)
+        -1 * infinity, infinity, depth, meter)
 
     word_list.reverse()
 
