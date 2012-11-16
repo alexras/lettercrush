@@ -58,7 +58,12 @@ class Board(object):
         self.letter = list(letters)
 
     def possible_words(self, dictionary_file):
-        sorted_letters = sorted(self.letter)
+        sorted_letters = []
+
+        for i, cur_letter in enumerate(self.letter):
+            sorted_letters.append((cur_letter, i))
+
+        sorted_letters.sort()
 
         words = []
 
@@ -81,9 +86,11 @@ class Board(object):
 
                 while (word_index < len(sorted_word) and
                        letter_index < len(sorted_letters)):
-                    if sorted_word[word_index] == sorted_letters[letter_index]:
+                    if (sorted_word[word_index] ==
+                        sorted_letters[letter_index][0]):
+
                         word_index += 1
-                        letters.append(letter_index)
+                        letters.append(sorted_letters[letter_index][1])
 
                     letter_index += 1
 
